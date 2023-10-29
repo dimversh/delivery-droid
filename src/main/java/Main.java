@@ -6,64 +6,48 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Main {
+
+
+    public static final int NUMBER_OF_THREADS = 1000;
     public static final Map<Integer, Integer> sizeToFreq = new HashMap<>();
 
     public static void main(String[] args) {
 
-        ExecutorService executor = Executors.newFixedThreadPool(1000);
-        for (int i = 0; i < 1000; i++) {
-            synchronized (sizeToFreq) {
-                Runnable runnable = () -> {
-                    String generatedRoute = generateRoute("RLRFR", 100);
+        for (int i = 0; i < NUMBER_OF_THREADS; i++) {
+            new Thread(() -> {
+                String generatedRoute = generateRoute("RLRFR", 100);
+                int frequency = (int) generatedRoute.chars()
+                        .filter(e -> e == 'R').count();
 
-                    int countOfR = 0;
-                    for (int j = 0; j < generatedRoute.length(); j++) {
-                        if (generatedRoute.charAt(j) == 'R') {
-                            countOfR++;
-                        } else {
-                            if (countOfR == 1)
-                                sizeToFreq.put(countOfR, 1);
-                            if (countOfR > 0) {
-                                sizeToFreq.put(countOfR, sizeToFreq.getOrDefault(countOfR, 0) + 1);
-                            }
-                            countOfR = 0;
-                        }
+                int countOfR = 0;
+                synchronized (sizeToFreq) {
+                    if (sizeToFreq.containsKey(frequency)) {
+                        sizeToFreq.put(frequency, sizeToFreq.get(frequency) + 1);
+                    } else {
+                        sizeToFreq.put(frequency, 1);
                     }
-                    if (countOfR > 0) {
-                        sizeToFreq.put(countOfR, sizeToFreq.getOrDefault(countOfR, 0) + 1);
-                    }
-                };
-                executor.execute(runnable);
-            }
-
-
-
+                }
+            }).start();
         }
 
-        executor.shutdown();
+        Map.Entry<Integer, Integer> map = sizeToFreq
+                .entrySet()
+                .stream()
+                .max(Map.Entry.comparingByValue())
+                .get();
 
-        while (!executor.isTerminated()) {
+        System.out.println("Самое частое количество повторений: " + map.getKey() +
+                " встретились " + map.getValue() + " раз");
 
-        }
-        System.out.println("Executor закончил работу!");
-        int more = 0;
-        int morecount = 0;
-        for (Map.Entry<Integer, Integer> entry : sizeToFreq.entrySet()) {
-            int frequency = entry.getKey();
-            int count = entry.getValue();
-            if (morecount < count) {
-                morecount = count;
-                more = frequency;
-            }
+        System.out.println("Другие размеры: ");
 
-            System.out.println("Другие размеры: " + frequency + ": " + count);
-
-        }
-        System.out.println("Самое частое число повторений = " + more);
+        sizeToFreq.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue())
+                .forEach(e -> System.out.println(e.getKey() + ": " + e.getValue() + " раз"));
 
 
     }
-
 
     public static String generateRoute(String letters, int length) {
         Random random = new Random();
